@@ -10,10 +10,10 @@ body{padding:6px}
 .logo{width:38px;height:38px;font-size:15px}.brandname{font-size:14px}.tagline{font-size:8px}
 #login{flex:0 0 auto;overflow:auto}
 #app.hidden{display:none!important}
-#app:not(.hidden){flex:1 1 auto;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto auto minmax(112px,1.12fr) auto auto minmax(135px,1fr) auto;gap:5px}
+#app:not(.hidden){flex:1 1 auto;min-height:0;overflow:hidden;display:grid;grid-template-rows:auto auto minmax(0,1.05fr) auto auto minmax(0,1fr) auto;gap:4px}
 #app>.balancebox{display:flex;min-height:0;padding:7px 10px}
 #app>.notice{display:block;margin:0;padding:6px 5px;line-height:1.15}
-#app>.playgrid{display:grid;min-height:0;grid-template-columns:minmax(0,1fr) 88px;gap:6px}
+#app>.playgrid{display:grid;min-height:0;min-width:0;grid-template-columns:minmax(0,1fr) 88px;gap:6px;overflow:hidden}
 .wheelbox{min-height:0;padding:5px}
 .wheel{width:clamp(78px,23vw,112px);height:clamp(78px,23vw,112px);flex:0 0 auto}
 .wheel:before{inset:15px}.winning{font-size:25px}.wheelcaption{margin-top:7px;font-size:7px}
@@ -22,19 +22,19 @@ body{padding:6px}
 #app>.recent{display:flex;min-height:0;margin:0;padding:4px 6px;overflow:hidden}
 .ball{width:clamp(22px,7vw,28px);height:clamp(22px,7vw,28px);font-size:11px}
 #app>section.card:has(#chips){display:block;min-height:0;padding:7px 8px}
-#app>section.card:has(#numbers){display:block;min-height:0;padding:7px 8px}
+#app>section.card:has(#numbers){display:block;min-height:0;min-width:0;padding:7px 8px;overflow:hidden}
 #app>.bottomrow{display:grid;min-height:0;grid-template-columns:1fr 1fr;gap:6px}
 .totalbox{padding:6px 8px}.totalvalue{font-size:18px}.enter{padding:6px;font-size:11px}
 .subhead{margin-bottom:5px}.subhead h2{margin:0;font-size:10px}.tiny{font-size:8px}
 .chips{gap:4px}.chip{padding:clamp(5px,1.6vh,10px) 1px;font-size:11px}
-.numbers{gap:4px}.num{padding:clamp(5px,1.7vh,11px) 1px;font-size:12px}
-.quickrow{margin-top:4px;gap:4px}.quickrow button{padding:6px 1px;font-size:8px}
+.numbers{gap:4px}.num{padding:clamp(4px,1.1vh,8px) 1px;font-size:12px;min-height:0}
+.quickrow{margin-top:4px;gap:4px}.quickrow button{padding:clamp(4px,.8vh,6px) 1px;font-size:8px}
 #app>#transferPanel,#app>#ticketsPanel,#app>#resultsPanel{display:none}
 #transferPanel:not(.hidden),#ticketsPanel:not(.hidden),#resultsPanel:not(.hidden){display:block;position:fixed;z-index:100;left:50%;top:50%;transform:translate(-50%,-50%);width:min(450px,calc(100vw - 24px));max-height:82dvh;overflow:auto;margin:0;box-shadow:0 0 0 100vmax #050611bb,0 20px 60px #000b;padding:16px}
 #app>section:has(#status){display:none!important}
 .footer{display:none}
 .menupanel{max-height:75dvh;overflow:auto}
-@media(max-height:690px){.top{min-height:46px;padding:5px 8px}.logo{width:32px;height:32px}.brandname{font-size:12px}.tagline{font-size:7px}#app:not(.hidden){grid-template-rows:auto auto minmax(92px,1fr) auto auto minmax(118px,1.05fr) auto}.wheel{width:clamp(70px,18vw,94px);height:clamp(70px,18vw,94px)}.wheel:before{inset:12px}.wheelcaption{margin-top:4px}.num{padding:4px 1px}.chip{padding:5px 1px}.quickrow button{padding:4px 1px}.totalbox{padding:4px 6px}}
+@media(max-height:760px){#app:not(.hidden){grid-template-rows:auto auto minmax(0,.95fr) auto auto minmax(0,.9fr) auto;gap:3px}.top{min-height:46px;padding:5px 8px}.logo{width:32px;height:32px}.brandname{font-size:12px}.tagline{font-size:7px}#app:not(.hidden){grid-template-rows:auto auto minmax(92px,1fr) auto auto minmax(118px,1.05fr) auto}.wheel{width:clamp(70px,18vw,94px);height:clamp(70px,18vw,94px)}.wheel:before{inset:12px}.wheelcaption{margin-top:4px}.num{padding:4px 1px}.chip{padding:5px 1px}.quickrow button{padding:4px 1px}.totalbox{padding:4px 6px}}
 @media(min-width:600px){body{padding:6px}.wrap{height:calc(100dvh - 12px)}}
 </style></head><body><main class="wrap">
 <header class="top"><div class="brand"><div class="logo">VRL</div><div><div class="brandname">VIRTUAL RUPEE LOTTERY</div><div class="tagline">PLAY · PREDICT · ENJOY</div></div></div><div class="menuwrap"><button class="menu" id="menuBtn" aria-label="Toggle menu" aria-expanded="false">☰</button><div id="menuPanel" class="menupanel hidden"><button id="menuTransfer">⇄ Transfer points</button><button id="menuTickets">▤ My tickets</button><button id="menuResults">◉ Results</button><button id="menuSignout">Sign out</button></div></div></header>
