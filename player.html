@@ -152,6 +152,25 @@ body{padding:0}
 .ticket-point-separator{color:#8d97aa;font-size:12px}
 .ticket-point-value{font-size:12px;font-weight:700;color:#d1d7e3}
 .ticket-pending{font-size:12px;color:#b7c0d1;margin-top:10px}
+
+/* Results section only: full-screen, scrollable recent results. */
+.results-screen{position:fixed;inset:0;z-index:1002;background:#090d18;color:#f5f6fb;display:none;flex-direction:column;padding:16px;overflow:hidden;box-sizing:border-box}
+.results-screen.show{display:flex}
+.results-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 14px;border-bottom:1px solid #34394a;flex-shrink:0}
+.results-top h2{margin:0;color:#f3d47a;font-size:20px}
+.results-close{border:0;border-radius:9px;background:#22293b;color:#fff;font-size:25px;width:42px;height:42px;cursor:pointer}
+.results-caption{font-size:12px;color:#aeb5c8;padding:12px 0;flex-shrink:0}
+.results-table-head,.results-row{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:12px;align-items:center}
+.results-table-head{padding:10px 12px;color:#c3cada;font-size:12px;font-weight:800;border-bottom:1px solid #34394a;flex-shrink:0}
+.results-table-head span:last-child{text-align:center}
+.results-list{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;padding-bottom:20px}
+.results-row{padding:14px 12px;border-bottom:1px solid #252e40;background:#111827}
+.results-row:nth-child(even){background:#151e2e}
+.results-date{font-size:13px;color:#e0e5ef;line-height:1.4}
+.results-value{text-align:center;font-size:18px;font-weight:900;color:#f4d77d}
+.results-value.pending{font-size:13px;color:#aeb5c8;font-weight:700}
+.results-empty{padding:18px;text-align:center;color:#b6bdd0;border:1px dashed #41495e;border-radius:10px}
+@media(max-width:360px){.results-screen{padding:12px}.results-table-head,.results-row{grid-template-columns:minmax(0,1fr) 76px;gap:8px}.results-date{font-size:12px}}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
@@ -176,6 +195,7 @@ body{padding:0}
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h2 id="modalTitle">VRL</h2><div id="modalBody"></div><div class="modal-actions" id="modalActions"></div></div></div>
 <div class="history-screen" id="transferHistoryScreen" role="dialog" aria-modal="true" aria-label="Transfer history"><div class="history-top"><h2>Transfer history</h2><button class="history-close" id="transferHistoryClose" aria-label="Close transfer history">×</button></div><input class="history-search" id="transferHistorySearch" type="search" inputmode="numeric" maxlength="10" placeholder="Search by 10-digit VRL ID"><div class="history-caption">Transfers from the last 3 days · newest first</div><div class="history-list" id="transferHistoryList"><div class="history-empty">Loading transfer history…</div></div></div>
 <div class="ticket-screen" id="ticketScreen" role="dialog" aria-modal="true" aria-label="Tickets"><div class="ticket-top"><h2>My tickets</h2><button class="ticket-close" id="ticketClose" aria-label="Close tickets">×</button></div><div class="ticket-caption">Your latest 3 rounds with tickets · newest first</div><div class="ticket-list" id="ticketList"><div class="history-empty">Loading tickets…</div></div></div>
+<div class="results-screen" id="resultsScreen" role="dialog" aria-modal="true" aria-label="Results"><div class="results-top"><h2>Results</h2><button class="results-close" id="resultsClose" aria-label="Close results">×</button></div><div class="results-caption">Latest 30 rounds · newest first</div><div class="results-table-head"><span>Date &amp; time</span><span>Result</span></div><div class="results-list" id="resultsList"><div class="results-empty">Loading results…</div></div></div>
 
 <script>
 (()=>{
@@ -302,7 +322,34 @@ function renderTickets(){
 }
 $("ticketsBtn").onclick=()=>{$("ticketScreen").classList.add("show");renderTickets()};
 $("ticketClose").onclick=()=>$("ticketScreen").classList.remove("show");
-$("resultsBtn").onclick=()=>{const body=history.length?'<p>Latest server results:</p>'+history.map(h=>`<p>Round ${h.round_id} · ${h.time} · Winning number <b>${h.number}</b></p>`).join(""):"<p>No completed rounds yet.</p>";showModal("Results history",body,"Close")};
+function renderResults(){
+ const list=$("resultsList");
+ const rows=[...history].slice(0,30);
+ if(!rows.length){list.innerHTML='<div class="results-empty">No results available yet.</div>';return}
+ list.innerHTML="";
+ rows.forEach(h=>{
+  const row=document.createElement("div");row.className="results-row";
+  const date=document.createElement("div");date.className="results-date";
+  const timestamp=h.generated_at?new Date(h.generated_at):null;
+  date.textContent=timestamp&&!Number.isNaN(timestamp.getTime())?timestamp.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"})+" "+timestamp.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}):h.time||"Time unavailable";
+  const value=document.createElement("div");value.className="results-value";
+  if(h.pending){value.textContent="pending";value.classList.add("pending")}else value.textContent=String(h.number);
+  row.append(date,value);list.appendChild(row);
+ });
+}
+$("resultsBtn").onclick=async()=>{$("resultsScreen").classList.add("show");await loadResultsPage()};
+$("resultsClose").onclick=()=>$("resultsScreen").classList.remove("show");
+async function loadResultsPage(){
+ const list=$("resultsList");list.innerHTML='<div class="results-empty">Loading results…</div>';
+ try{
+  const {data,error}=await sb.from("rounds").select("id,status,betting_started_at,completed_at,winning_number").order("id",{ascending:false}).limit(30);
+  if(error)throw error;
+  history=(data||[]).map(r=>({round_id:r.id,number:r.winning_number,time:r.completed_at?new Date(r.completed_at).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}):"",generated_at:r.completed_at||r.betting_started_at,pending:r.status!=="completed"||r.winning_number===null}));
+  renderResults();
+ }catch(e){
+  list.innerHTML='<div class="results-empty">Results could not be loaded. Please try again.</div>';
+ }
+}
 
 async function loadTransferHistory(){
  const list=$("transferHistoryList");list.innerHTML='<div class="history-empty">Loading transfer history…</div>';
