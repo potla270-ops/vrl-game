@@ -65,7 +65,7 @@ body{padding:0}
  .recent{padding:3px 6px}.result-pill{width:22px;height:22px}
 }
 @media(min-width:700px){body{display:block}.app{height:100dvh;min-height:0;max-width:480px;overflow:hidden;border:1px solid #282d3b;border-radius:18px;box-shadow:0 20px 80px #0008;padding:6px 8px}}
-</style></head>
+.password-wrap{position:relative;width:100%}.password-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:32px;border:0;border-radius:7px;background:transparent;color:#c7cedf;display:grid;place-items:center;font-size:17px;padding:0}.password-toggle:focus-visible{outline:2px solid var(--gold2);outline-offset:1px}</style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
 <main class="app" id="app">
@@ -82,7 +82,7 @@ body{padding:0}
 <div class="modal-backdrop show" id="loginBackdrop" style="z-index:20"><div class="modal">
 <h2>Welcome to VRL</h2><p>Sign in with your 10-digit VRL ID and password.</p>
 <form id="loginForm"><label for="loginVrlId" style="display:block;font-size:11px;color:var(--muted);margin:10px 0 5px">VRL ID</label><input id="loginVrlId" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="username" required style="width:100%;padding:11px;border-radius:9px;border:1px solid var(--line);background:#0b0e18;color:#fff">
-<label for="loginPassword" style="display:block;font-size:11px;color:var(--muted);margin:10px 0 5px">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required style="width:100%;padding:11px;border-radius:9px;border:1px solid var(--line);background:#0b0e18;color:#fff">
+<label for="loginPassword" style="display:block;font-size:11px;color:var(--muted);margin:10px 0 5px">Password</label><div class="password-wrap"><input id="loginPassword" type="password" autocomplete="current-password" required style="width:100%;padding:11px 44px 11px 11px;border-radius:9px;border:1px solid var(--line);background:#0b0e18;color:#fff"><button type="button" id="toggleLoginPassword" class="password-toggle" aria-label="Show password" aria-pressed="false" title="Show password">👁</button></div>
 <p id="loginError" style="display:none;color:#ff9aa4;margin:8px 0"></p><button type="submit" id="loginSubmit" class="primary" style="width:100%;padding:12px;border-radius:10px;margin-top:12px">Sign in</button></form>
 <p style="font-size:10px;color:var(--muted)">VRL points are virtual, have no cash value, and cannot be redeemed for money.</p>
 </div></div>
@@ -121,6 +121,7 @@ updateTimer();
 }catch(e){showModal("Connection issue",String(e.message||e),"Close")}finally{busy=false}}
 async function signIn(e){e.preventDefault();$("loginSubmit").disabled=true;$("loginSubmit").textContent="Signing in…";$("loginError").style.display="none";try{const id=$("loginVrlId").value.trim(),password=$("loginPassword").value;if(!/^\d{10}$/.test(id))throw Error("Enter your 10-digit VRL ID.");await makeDeviceHash();const {data,error}=await sb.auth.signInWithPassword({email:id+"@accounts.vrl.invalid",password});if(error)throw error;profile={id:data.user.id};await api("session_check");const signedInProfile=await api("get_my_profile");if(signedInProfile.role==="admin"){await sb.auth.signOut();profile=null;throw Error("Invalid credentials.");}profile={id:data.user.id,...signedInProfile};$("loginBackdrop").classList.remove("show");await refresh();render()}catch(e){loginError(/different browser/i.test(e.message)?"This VRL ID is bound to another browser identity. Use the previously linked browser or ask the administrator to reset the binding after identity verification.":e.message||"Sign-in failed.")}finally{$("loginSubmit").disabled=false;$("loginSubmit").textContent="Sign in"}}
 async function signOut(){await sb.auth.signOut();profile=null;round=null;bets={};balance=0;roundTicket=null;$("loginVrlId").value="";$("loginPassword").value="";$("loginBackdrop").classList.add("show");render()}
+$("toggleLoginPassword").addEventListener("click",()=>{const input=$("loginPassword"),show=input.type==="password";input.type=show?"text":"password";$("toggleLoginPassword").setAttribute("aria-label",show?"Hide password":"Show password");$("toggleLoginPassword").setAttribute("title",show?"Hide password":"Show password");$("toggleLoginPassword").setAttribute("aria-pressed",String(show));});
 $("loginForm").addEventListener("submit",signIn);
 $("chips").addEventListener("click",e=>{const b=e.target.closest("[data-chip]");if(b&&phase==="betting"&&!roundTicket){selectedChip=+b.dataset.chip;render()}});
 $("clearBtn").onclick=()=>{if(roundTicket||phase!=="betting")return;bets={};render()};
