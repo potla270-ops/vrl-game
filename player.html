@@ -109,6 +109,23 @@ body{padding:0}
 
 /* Slightly smaller wheel to provide clear breathing room in its panel. */
 .wheel{width:min(88%,calc(100cqh - 36px),300px);max-width:88%;height:auto;aspect-ratio:1;box-sizing:border-box;flex:0 1 auto}
+
+/* VRL wheel colour scheme: dark navy and gold only. */
+.wheel{
+ background:conic-gradient(from -15deg,
+ #b88720 0deg 30deg,#101b2d 30deg 60deg,
+ #b88720 60deg 90deg,#101b2d 90deg 120deg,
+ #b88720 120deg 150deg,#101b2d 150deg 180deg,
+ #b88720 180deg 210deg,#101b2d 210deg 240deg,
+ #b88720 240deg 270deg,#101b2d 270deg 300deg,
+ #b88720 300deg 330deg,#101b2d 330deg 360deg);
+ border-color:#ffc84a;
+ box-shadow:0 0 0 3px #33250d,0 0 13px #dba52d,inset 0 0 0 5px #171b26;
+}
+.wheel:before{border-color:#ffe7a0;box-shadow:inset 0 0 0 1px #4a3510}
+.wheel:after{background:repeating-conic-gradient(from -15deg,transparent 0deg 29deg,#f7d986 29deg 30deg)}
+.wheel-center{border-color:#ffc84a;background:radial-gradient(circle at 35% 25%,#17263a,#070b14 72%);box-shadow:0 0 0 3px #3c2b10,0 0 10px #dba52d}
+.win-number{color:#f9df86;text-shadow:0 0 8px #d99d22}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
