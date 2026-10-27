@@ -94,6 +94,14 @@ body{padding:0}
 .wheel-center{position:relative;z-index:2;width:45%;height:45%;border:3px solid #ffc84a;background:radial-gradient(circle at 35% 25%,#152b3d,#06121e 72%);box-shadow:0 0 0 3px #482b19,0 0 10px #ffbc36;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .wheel-center-label{font-size:clamp(6px,1.1vh,9px);font-weight:800;letter-spacing:.4px;color:#fff;text-align:center;white-space:nowrap}
 .win-number{font-family:system-ui,sans-serif;font-size:clamp(18px,4.1vh,28px);font-weight:950;color:#31ff9c;text-shadow:0 0 8px #00ff8c}
+
+/* Wheel sizing and center-label refinement only. */
+.wheel-card{gap:0}
+.wheel{width:min(100%,340px);height:auto;aspect-ratio:1;flex:0 0 auto}
+.wheel-label{display:none}
+.wheel-center{width:46%;height:46%;padding:4px;gap:0;overflow:hidden}
+.wheel-center-label{font-size:clamp(9px,2.1vw,15px);letter-spacing:.15px;line-height:1.1;max-width:100%;white-space:nowrap}
+.win-number{font-size:clamp(28px,7vw,48px);line-height:1.05}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
