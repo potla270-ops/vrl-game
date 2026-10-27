@@ -106,6 +106,9 @@ body{padding:0}
 /* Keep wheel fully inside its allotted wheel-card area. */
 .wheel-card{min-width:0;min-height:0;box-sizing:border-box;padding:10px;overflow:hidden}
 .wheel{width:min(100%,calc(100cqh - 20px),340px);max-width:100%;height:auto;aspect-ratio:1;box-sizing:border-box;flex:0 1 auto}
+
+/* Slightly smaller wheel to provide clear breathing room in its panel. */
+.wheel{width:min(88%,calc(100cqh - 36px),300px);max-width:88%;height:auto;aspect-ratio:1;box-sizing:border-box;flex:0 1 auto}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
