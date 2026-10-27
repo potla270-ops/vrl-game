@@ -126,6 +126,32 @@ body{padding:0}
 .wheel:after{background:repeating-conic-gradient(from -15deg,transparent 0deg 29deg,#f7d986 29deg 30deg)}
 .wheel-center{border-color:#ffc84a;background:radial-gradient(circle at 35% 25%,#17263a,#070b14 72%);box-shadow:0 0 0 3px #3c2b10,0 0 10px #dba52d}
 .win-number{color:#f9df86;text-shadow:0 0 8px #d99d22}
+
+/* Tickets section only: full-screen, scrollable ticket history. */
+.ticket-screen{position:fixed;inset:0;z-index:1001;background:#090d18;color:#f5f6fb;display:none;flex-direction:column;padding:16px;overflow:hidden;box-sizing:border-box}
+.ticket-screen.show{display:flex}
+.ticket-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 14px;border-bottom:1px solid #34394a;flex-shrink:0}
+.ticket-top h2{margin:0;color:#f3d47a;font-size:20px}
+.ticket-close{border:0;border-radius:9px;background:#22293b;color:#fff;font-size:25px;width:42px;height:42px;cursor:pointer}
+.ticket-caption{font-size:12px;color:#aeb5c8;padding:12px 0;flex-shrink:0}
+.ticket-list{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0;padding-bottom:20px}
+.ticket-card{border:1px solid #39435a;border-radius:13px;padding:14px;margin-bottom:12px;background:linear-gradient(145deg,#151e30,#101522)}
+.ticket-heading{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ticket-round{font-size:17px;font-weight:900;color:#f4d77d}
+.ticket-date{font-size:12px;color:#c0c7d7;align-self:center}
+.ticket-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:13px}
+.ticket-stat{padding:9px 6px;border-radius:9px;background:#0b1120;text-align:center;border:1px solid #2c3548}
+.ticket-stat-label{font-size:10px;color:#aeb8cb;text-transform:uppercase;letter-spacing:.35px}
+.ticket-stat-value{font-size:17px;font-weight:900;color:#f5d77d;margin-top:3px;overflow-wrap:anywhere}
+.ticket-stat.result .ticket-stat-value{color:#fff}
+.ticket-stat.won .ticket-stat-value{color:#67d7ad}
+.ticket-distribution-title{font-size:12px;font-weight:800;color:#c5ccda;margin-bottom:8px}
+.ticket-distribution{display:flex;flex-wrap:wrap;gap:7px}
+.ticket-point{display:flex;align-items:center;gap:5px;border:1px solid #414b61;border-radius:8px;background:#0b1221;padding:6px 9px}
+.ticket-point-number{font-size:16px;font-weight:950;color:#f4d77d}
+.ticket-point-separator{color:#8d97aa;font-size:12px}
+.ticket-point-value{font-size:12px;font-weight:700;color:#d1d7e3}
+.ticket-pending{font-size:12px;color:#b7c0d1;margin-top:10px}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
@@ -149,6 +175,7 @@ body{padding:0}
 </div></div>
 <div class="modal-backdrop" id="modalBackdrop"><div class="modal"><h2 id="modalTitle">VRL</h2><div id="modalBody"></div><div class="modal-actions" id="modalActions"></div></div></div>
 <div class="history-screen" id="transferHistoryScreen" role="dialog" aria-modal="true" aria-label="Transfer history"><div class="history-top"><h2>Transfer history</h2><button class="history-close" id="transferHistoryClose" aria-label="Close transfer history">×</button></div><input class="history-search" id="transferHistorySearch" type="search" inputmode="numeric" maxlength="10" placeholder="Search by 10-digit VRL ID"><div class="history-caption">Transfers from the last 3 days · newest first</div><div class="history-list" id="transferHistoryList"><div class="history-empty">Loading transfer history…</div></div></div>
+<div class="ticket-screen" id="ticketScreen" role="dialog" aria-modal="true" aria-label="Tickets"><div class="ticket-top"><h2>My tickets</h2><button class="ticket-close" id="ticketClose" aria-label="Close tickets">×</button></div><div class="ticket-caption">Your latest 3 rounds with tickets · newest first</div><div class="ticket-list" id="ticketList"><div class="history-empty">Loading tickets…</div></div></div>
 
 <script>
 (()=>{
@@ -234,7 +261,47 @@ catch(e){showModal("Could not create account",e.message||"Account creation faile
 });
 }
 $("transferBtn").onclick=()=>{if(!profile)return;showModal("Transfer virtual points",`<p>Available balance: <b>${fmt(balance)} points</b></p><label style="font-size:11px">Recipient 10-digit VRL ID</label><input id="transferRecipient" inputmode="numeric" maxlength="10" placeholder="VRL ID" style="width:100%;padding:10px;margin:6px 0 10px;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><label style="font-size:11px">Amount</label><input id="transferAmount" type="number" min="1" step="1" placeholder="Points" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><label style="font-size:11px">Note (optional)</label><input id="transferMemo" maxlength="120" placeholder="Note" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><button type="button" class="transfer-history-open" id="openTransferHistory">Transfer history · Last 3 days</button>`,"Send", {label:"Cancel",action:()=>{}},async()=>{const to=$("transferRecipient").value.trim(),amount=Number($("transferAmount").value),memo=$("transferMemo").value.trim();if(!/^\d{10}$/.test(to)||!Number.isSafeInteger(amount)||amount<=0){showModal("Check details","Enter a valid 10-digit recipient ID and whole number amount.","OK");return}try{await api("transfer_points",{recipient_vrl_id:to,amount,memo,idempotency_key:uuid()});showModal("Transfer complete","Points transferred successfully.","OK");await refresh()}catch(e){showModal("Transfer failed",e.message||"Transfer failed.","OK")}});const historyButton=$("openTransferHistory");if(historyButton) $("modalActions").after(historyButton);};
-$("ticketsBtn").onclick=()=>{const body=tickets.length?'<p>Recent server-recorded bets:</p>'+tickets.slice(0,8).map(t=>`<p><b>Round ${t.round}</b> · ${fmt(t.total)} pts · ${Object.entries(t.bets).map(([n,v])=>n+': '+fmt(v)).join(', ')}</p>`).join(""):"<p>No bets recorded yet.</p>";showModal("Ticket history",body,"Close")};
+
+function renderTickets(){
+ const list=$("ticketList");
+ const recent=[...new Map(tickets.map(t=>[String(t.round),t])).values()].slice(0,3);
+ if(!recent.length){list.innerHTML='<div class="history-empty">No tickets recorded yet.</div>';return}
+ list.innerHTML="";
+ recent.forEach(t=>{
+  const result=history.find(h=>String(h.round_id)===String(t.round));
+  const winningNumber=result?Number(result.number):null;
+  const won=winningNumber&&t.bets[winningNumber]?Number(t.bets[winningNumber])*10:0;
+  const date=new Date(t.created);
+  const dateText=Number.isNaN(date.getTime())?"Date unavailable":date.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"})+"  "+date.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true});
+  const card=document.createElement("article");card.className="ticket-card";
+  const heading=document.createElement("div");heading.className="ticket-heading";
+  const roundLabel=document.createElement("div");roundLabel.className="ticket-round";roundLabel.textContent="Round #"+t.round;
+  const dateLabel=document.createElement("div");dateLabel.className="ticket-date";dateLabel.textContent=dateText;
+  heading.append(roundLabel,dateLabel);card.appendChild(heading);
+  const summary=document.createElement("div");summary.className="ticket-summary";
+  [["Total bet",fmt(t.total)],["Result",winningNumber||"Pending"],["Won",result?fmt(won):"—"]].forEach((item,i)=>{
+   const stat=document.createElement("div");stat.className="ticket-stat"+(i===1?" result":"")+(i===2?" won":"");
+   const label=document.createElement("div");label.className="ticket-stat-label";label.textContent=item[0];
+   const value=document.createElement("div");value.className="ticket-stat-value";value.textContent=item[1];
+   stat.append(label,value);summary.appendChild(stat);
+  });
+  card.appendChild(summary);
+  const title=document.createElement("div");title.className="ticket-distribution-title";title.textContent="Point Distribution (1–12)";card.appendChild(title);
+  const distribution=document.createElement("div");distribution.className="ticket-distribution";
+  Object.entries(t.bets).sort((a,b)=>Number(a[0])-Number(b[0])).forEach(([n,v])=>{
+   const point=document.createElement("div");point.className="ticket-point";
+   const number=document.createElement("span");number.className="ticket-point-number";number.textContent=n;
+   const separator=document.createElement("span");separator.className="ticket-point-separator";separator.textContent=":";
+   const amount=document.createElement("span");amount.className="ticket-point-value";amount.textContent=fmt(v)+" pts";
+   point.append(number,separator,amount);distribution.appendChild(point);
+  });
+  card.appendChild(distribution);
+  if(!result){const pending=document.createElement("div");pending.className="ticket-pending";pending.textContent="Round result is not available yet.";card.appendChild(pending)}
+  list.appendChild(card);
+ });
+}
+$("ticketsBtn").onclick=()=>{$("ticketScreen").classList.add("show");renderTickets()};
+$("ticketClose").onclick=()=>$("ticketScreen").classList.remove("show");
 $("resultsBtn").onclick=()=>{const body=history.length?'<p>Latest server results:</p>'+history.map(h=>`<p>Round ${h.round_id} · ${h.time} · Winning number <b>${h.number}</b></p>`).join(""):"<p>No completed rounds yet.</p>";showModal("Results history",body,"Close")};
 
 async function loadTransferHistory(){
