@@ -222,7 +222,7 @@ async function makeDeviceHash(){const key="vrl_browser_identity_v1";let token=lo
 async function api(action,extra={}){const {data:{session}}=await sb.auth.getSession();if(!session)throw Error("Please sign in again.");if(!deviceHash)await makeDeviceHash();const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+session.access_token},body:JSON.stringify({action,device_binding_hash:deviceHash,...extra})});const j=await res.json().catch(()=>({error:"Unexpected server response"}));if(!res.ok)throw Error(j.error||"Request failed");return j.data}
 function renderGrid(){const g=$("numberGrid");g.innerHTML="";for(let n=1;n<=12;n++){const b=document.createElement("button");b.className="num"+(bets[n]?" selected":"");b.innerHTML=`<span>${n}</span><small>${bets[n]?fmt(bets[n])+" pts":"—"}</small>`;b.disabled=phase!=="betting"||!profile;b.addEventListener("click",()=>{if(phase!=="betting")return;if(balance-sumBets()<selectedChip){showModal("Not enough points","Your remaining virtual points balance is too low for this chip.","OK");return}bets[n]=(bets[n]||0)+selectedChip;render()});g.appendChild(b)}}
 function renderHistory(){const el=$("recentList");el.innerHTML="";for(let i=0;i<5;i++){const item=history[i];const d=document.createElement("div");d.className="result-pill";d.textContent=item?item.number:"—";el.appendChild(d)}}
-function pendingBatch(){if(!profile)return null;const prefix="vrl_pending_batch:"+profile.id+":";for(let i=0;i<sessionStorage.length;i++){const key=sessionStorage.key(i);if(key&&key.startsWith(prefix)){try{const pending=JSON.parse(sessionStorage.getItem(key)||"null");if(pending&&pending.submission_id&&Array.isArray(pending.bets)&&pending.round_id)return{key,pending}}catch{}}}return null}
+function pendingBatch(roundId=round?.id){if(!profile||!roundId)return null;const key="vrl_pending_batch:"+profile.id+":"+roundId;try{const pending=JSON.parse(sessionStorage.getItem(key)||"null");if(pending&&pending.submission_id&&Array.isArray(pending.bets)&&Number(pending.round_id)===Number(roundId))return{key,pending}}catch{}return null}
 function render(){const pending=pendingBatch();$("balance").textContent=fmtBalance(Math.max(0,balance-sumBets()));$("total").textContent=fmt(sumBets());$("selectionHint").textContent=pending?"A ticket is awaiting server confirmation":sumBets()?Object.keys(bets).length+" number(s) selected":"No predictions yet";$("enterBtn").disabled=(!pending&&phase!=="betting")||(!pending&&sumBets()===0)||!profile||busy;$("enterBtn").textContent=pending?"RETRY PENDING TICKET":"ENTER PREDICTION";$("timer").textContent=seconds;$("timerLabel").textContent=phase==="betting"?"Betting sec":phase==="drawing"?"Result sec":"Waiting";$("roundLabel").textContent=round?"Round #"+round.id:"Waiting for round";document.querySelectorAll(".chip").forEach(b=>b.classList.toggle("active",+b.dataset.chip===selectedChip));renderGrid();renderHistory()}
 function updateTimer(){if(!round){seconds=0;phase="waiting";render();return}const target=new Date(round.status==="betting"?round.betting_ends_at:round.result_due_at).getTime();seconds=Math.max(0,Math.ceil((target-Date.now())/1000));phase=round.status==="betting"?"betting":round.status==="drawing"?"drawing":"waiting";render()}
 async function refresh(){if(!profile||busy)return;busy=true;try{
@@ -233,8 +233,8 @@ sb.from("rounds").select("id,status,betting_started_at,betting_ends_at,result_du
 sb.from("round_results").select("round_id,winning_number,generated_at").order("generated_at",{ascending:false}).limit(5)
 ]);if(pr.error)throw pr.error;if(Number(pr.data.credential_version??0)!==Number(profile.credential_version??0)){const forcedMessage="Invalid credentials.";await signOut();window.alert(forcedMessage);return;}if(wr.error)throw wr.error;if(pr.data.status!=="active")throw Error("This VRL account is not active.");profile=pr.data;balance=Number(wr.data.balance);round=rr.data?.[0]||null;
 history=(res.data||[]).map(x=>({number:x.winning_number,round_id:x.round_id,time:new Date(x.generated_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}));
-const myBets=await sb.from("bets").select("round_id,number,stake,created_at").eq("user_id",profile.id).order("created_at",{ascending:false}).limit(30);
-tickets=(myBets.data||[]).reduce((a,b)=>{let t=a.find(x=>x.round===b.round_id);if(!t){t={round:b.round_id,created:b.created_at,bets:{},total:0,status:"Placed"};a.push(t)}t.bets[b.number]=(t.bets[b.number]||0)+b.stake;t.total+=b.stake;return a},[]);
+const myBets=await sb.from("bets").select("round_id,number,stake,created_at").eq("user_id",profile.id).order("created_at",{ascending:false}).limit(120);
+tickets=(myBets.data||[]).reduce((a,b)=>{const key=String(b.round_id)+"|"+String(b.created_at);let t=a.find(x=>x.key===key);if(!t){t={key,round:b.round_id,created:b.created_at,bets:{},total:0,status:"Placed"};a.push(t)}t.bets[b.number]=(t.bets[b.number]||0)+b.stake;t.total+=b.stake;return a},[]);
 if(round){$("roundLabel").textContent="Round #"+round.id}else $("roundLabel").textContent="Waiting for next round";
 $("wheelLabel").textContent=history.length?"Last winning number":"Waiting for result";if(history.length){$("wheelNumber").textContent=history[0].number;lastNumber=history[0].number}
 updateTimer();
@@ -294,7 +294,7 @@ $("transferBtn").onclick=()=>{if(!profile)return;showModal("Transfer virtual poi
 
 function renderTickets(){
  const list=$("ticketList");
- const recent=[...new Map(tickets.map(t=>[String(t.round),t])).values()].slice(0,3);
+ const recent=tickets.slice(0,3);
  if(!recent.length){list.innerHTML='<div class="history-empty">No tickets recorded yet.</div>';return}
  list.innerHTML="";
  recent.forEach(t=>{
