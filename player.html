@@ -180,6 +180,14 @@ body{padding:0}
 .chip-selection-section .chip.active:after{content:'✓';position:absolute;right:7%;top:7%;font-size:clamp(8px,2vw,11px);color:#fff7d5}
 @media(min-width:500px){.chip-selection-section .chips{gap:9px}.chip-selection-section .chip{max-width:64px;justify-self:center}}
 
+
+/* Result reveal: dim the existing screen while keeping only the wheel prominent. */
+body.result-phase::before{content:"";position:fixed;inset:0;background:rgba(3,5,12,.94);z-index:1000;pointer-events:auto;opacity:1;transition:opacity .32s ease}
+body.result-phase.result-phase-ending::before{opacity:0}
+body.result-phase .wheel{z-index:1002;transition:none!important}
+body.result-phase .pointer{z-index:1003}
+body.result-phase .wheel-center-label,body.result-phase .win-number{visibility:hidden}
+body.result-phase .wheel-label{visibility:hidden}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
@@ -214,6 +222,7 @@ const API_URL=SUPABASE_URL+"/functions/v1/vrl-api";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false,storage:window.sessionStorage}});
 const $=id=>document.getElementById(id),chips=[2,5,10,20,50,100];
 let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],ticketHistory=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
+let resultCycle=null,wheelAngle=0,resultAnimationFrame=0;
 const fmt=n=>Math.floor(Number(n||0)).toLocaleString("en-IN"),fmtBalance=n=>Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}),sumBets=()=>Object.values(bets).reduce((a,b)=>a+b,0),uuid=()=>crypto.randomUUID();
 function showModal(title,body,button="OK",secondary=null,primaryAction=null){const modal=$("modalBackdrop").querySelector(".modal");modal.querySelectorAll(".transfer-history-open,.menu-close-x").forEach(el=>el.remove());modal.classList.remove("menu-modal");$("modalActions").style.display="flex";$("modalTitle").textContent=title;$("modalBody").innerHTML=typeof body==="string"?`<p>${body}</p>`:body;$("modalActions").innerHTML="";if(secondary){const b=document.createElement("button");b.textContent=secondary.label;b.onclick=()=>{hideModal();secondary.action?.()};$("modalActions").appendChild(b)}const p=document.createElement("button");p.className="primary";p.textContent=button;p.onclick=()=>{hideModal();primaryAction?.()};$("modalActions").appendChild(p);$("modalBackdrop").classList.add("show")}
 function hideModal(){$("modalBackdrop").classList.remove("show")}
@@ -224,6 +233,72 @@ function renderGrid(){const g=$("numberGrid");g.innerHTML="";for(let n=1;n<=12;n
 function renderHistory(){const el=$("recentList");el.innerHTML="";for(let i=0;i<5;i++){const item=history[i];const d=document.createElement("div");d.className="result-pill";d.textContent=item?item.number:"—";el.appendChild(d)}}
 function pendingBatch(roundId=round?.id){if(!profile||!roundId)return null;const key="vrl_pending_batch:"+profile.id+":"+roundId;try{const pending=JSON.parse(sessionStorage.getItem(key)||"null");if(pending&&pending.submission_id&&Array.isArray(pending.bets)&&Number(pending.round_id)===Number(roundId))return{key,pending}}catch{}return null}
 function render(){const pending=pendingBatch();$("balance").textContent=fmtBalance(Math.max(0,balance-sumBets()));$("total").textContent=fmt(sumBets());$("selectionHint").textContent=pending?"A ticket is awaiting server confirmation":sumBets()?Object.keys(bets).length+" number(s) selected":"No predictions yet";$("enterBtn").disabled=(!pending&&phase!=="betting")||(!pending&&sumBets()===0)||!profile||busy;$("enterBtn").textContent=pending?"RETRY PENDING TICKET":"ENTER PREDICTION";$("timer").textContent=seconds;$("timerLabel").textContent=phase==="betting"?"Betting sec":phase==="drawing"?"Result sec":"Waiting";$("roundLabel").textContent=round?"Round #"+round.id:"Waiting for round";document.querySelectorAll(".chip").forEach(b=>b.classList.toggle("active",+b.dataset.chip===selectedChip));renderGrid();renderHistory()}
+function resultSpinDistance(elapsedMs){
+ const accelerationMs=1800,maxSpeed=720,elapsed=Math.max(0,elapsedMs)/1000,accel=accelerationMs/1000;
+ return elapsed<=accel?maxSpeed*elapsed*elapsed/(2*accel):maxSpeed*(accel/2+elapsed-accel);
+}
+function normalizeDegrees(value){return((value%360)+360)%360}
+function beginResultCycle(roundData){
+ if(!roundData||roundData.status!=="drawing")return;
+ if(resultCycle&&String(resultCycle.roundId)===String(roundData.id))return;
+ if(resultCycle&&!resultCycle.finished)return;
+ const parsedStart=new Date(roundData.betting_ends_at).getTime();
+ resultCycle={roundId:roundData.id,startedAt:Number.isFinite(parsedStart)?parsedStart:Date.now(),startAngle:wheelAngle,winner:null,decelerationAt:null,decelerationStartAngle:0,targetAngle:0,finished:false};
+ document.body.classList.add("result-phase");
+ document.body.classList.remove("result-phase-ending");
+ $("wheel").style.transition="none";
+ $("wheel").style.transform="rotate("+wheelAngle+"deg)";
+ $("wheelLabel").textContent="Revealing result";
+ $("wheelNumber").textContent="";
+ if(resultAnimationFrame)cancelAnimationFrame(resultAnimationFrame);
+ resultAnimationFrame=requestAnimationFrame(animateResultWheel);
+}
+function animateResultWheel(){
+ const cycle=resultCycle;
+ if(!cycle||cycle.finished)return;
+ const now=Date.now(),elapsed=Math.max(0,now-cycle.startedAt);
+ if(cycle.winner!==null&&cycle.decelerationAt===null&&elapsed>=7000){
+  cycle.decelerationAt=now;
+  cycle.decelerationStartAngle=wheelAngle;
+  const targetModulo=normalizeDegrees(-((Number(cycle.winner)-1)*30));
+  const needed=normalizeDegrees(targetModulo-normalizeDegrees(wheelAngle));
+  const baseDistance=1080;
+  const extraTurns=Math.max(0,Math.round((baseDistance-needed)/360));
+  cycle.targetAngle=wheelAngle+needed+extraTurns*360;
+ }
+ if(cycle.decelerationAt!==null){
+  const progress=Math.min(1,(now-cycle.decelerationAt)/3000);
+  const eased=1-Math.pow(1-progress,2);
+  wheelAngle=cycle.decelerationStartAngle+(cycle.targetAngle-cycle.decelerationStartAngle)*eased;
+  $("wheel").style.transform="rotate("+wheelAngle+"deg)";
+  if(progress>=1){finishResultCycle(cycle);return}
+ }else{
+  wheelAngle=cycle.startAngle+resultSpinDistance(elapsed);
+  $("wheel").style.transform="rotate("+wheelAngle+"deg)";
+ }
+ resultAnimationFrame=requestAnimationFrame(animateResultWheel);
+}
+function finishResultCycle(cycle){
+ if(!cycle||cycle.finished)return;
+ cycle.finished=true;
+ wheelAngle=cycle.targetAngle;
+ $("wheel").style.transform="rotate("+wheelAngle+"deg)";
+ $("wheelNumber").textContent=String(cycle.winner);
+ $("wheelLabel").textContent="Last winning number";
+ renderHistory();
+ if($("ticketScreen").classList.contains("show"))renderTickets();
+ if($("resultsScreen").classList.contains("show"))loadResultsPage();
+ document.body.classList.add("result-phase-ending");
+ setTimeout(()=>{document.body.classList.remove("result-phase","result-phase-ending");},350);
+}
+function syncResultCycle(activeRound,resultRows){
+ if(activeRound?.status==="drawing")beginResultCycle(activeRound);
+ if(!resultCycle||resultCycle.finished)return;
+ const matching=(resultRows||[]).find(row=>String(row.round_id)===String(resultCycle.roundId));
+ const roundWinner=activeRound&&String(activeRound.id)===String(resultCycle.roundId)?activeRound.winning_number:null;
+ const winner=roundWinner??matching?.winning_number??null;
+ if(winner!==null&&winner!==undefined)resultCycle.winner=Number(winner);
+}
 function updateTimer(){if(!round){seconds=0;phase="waiting";render();return}const target=new Date(round.status==="betting"?round.betting_ends_at:round.result_due_at).getTime();seconds=Math.max(0,Math.ceil((target-Date.now())/1000));phase=round.status==="betting"?"betting":round.status==="drawing"?"drawing":"waiting";render()}
 async function refresh(){if(!profile||busy)return;busy=true;try{
 const [pr,wr,rr,res]=await Promise.all([
@@ -233,6 +308,7 @@ sb.from("rounds").select("id,status,betting_started_at,betting_ends_at,result_du
 sb.from("round_results").select("round_id,winning_number,generated_at").order("generated_at",{ascending:false}).limit(5)
 ]);if(pr.error)throw pr.error;if(Number(pr.data.credential_version??0)!==Number(profile.credential_version??0)){const forcedMessage="Invalid credentials.";await signOut();window.alert(forcedMessage);return;}if(wr.error)throw wr.error;if(pr.data.status!=="active")throw Error("This VRL account is not active.");profile=pr.data;balance=Number(wr.data.balance);round=rr.data?.[0]||null;
 history=(res.data||[]).map(x=>({number:x.winning_number,round_id:x.round_id,time:new Date(x.generated_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}));
+syncResultCycle(round,res.data||[]);
 const myBets=await sb.from("bets").select("round_id,number,stake,created_at").eq("user_id",profile.id).order("created_at",{ascending:false}).limit(1000);
 tickets=(myBets.data||[]).reduce((a,b)=>{const key=String(b.round_id)+"|"+String(b.created_at);let t=a.find(x=>x.key===key);if(!t){t={key,round:b.round_id,created:b.created_at,bets:{},total:0,status:"Placed"};a.push(t)}t.bets[b.number]=(t.bets[b.number]||0)+b.stake;t.total+=b.stake;return a},[]);
 const ticketRoundIds=[...new Set(tickets.map(t=>Number(t.round)))].slice(0,3);
