@@ -408,10 +408,8 @@ async function loadResultsPage(){
 
 async function loadTransferHistory(){
  const list=$("transferHistoryList");list.innerHTML='<div class="history-empty">Loading transfer history…</div>';
- const cutoff=new Date(Date.now()-3*24*60*60*1000).toISOString();
  try{
-  const {data,error}=await sb.from("transfers").select("id,sender_id,recipient_id,amount,created_at,sender:profiles!transfers_sender_id_fkey(vrl_id),recipient:profiles!transfers_recipient_id_fkey(vrl_id)").gte("created_at",cutoff).or("sender_id.eq."+profile.id+",recipient_id.eq."+profile.id).order("created_at",{ascending:false}).limit(200);
-  if(error)throw error;
+  const data=await api("get_transfer_history");
   window.__vrlTransferHistoryRows=(data||[]).filter(t=>t.sender_id===profile.id||t.recipient_id===profile.id);
   renderTransferHistory();
  }catch(e){list.innerHTML='<div class="history-empty">Transfer history could not be loaded. Please try again later.</div>';}
