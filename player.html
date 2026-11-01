@@ -403,9 +403,9 @@ $("resultsClose").onclick=()=>$("resultsScreen").classList.remove("show");
 async function loadResultsPage(){
  const list=$("resultsList");list.innerHTML='<div class="results-empty">Loading results…</div>';
  try{
-  const {data,error}=await sb.from("rounds").select("id,status,betting_started_at,completed_at,winning_number").order("id",{ascending:false}).limit(30);
+  const {data,error}=await sb.from("rounds").select("id,status,betting_started_at,result_due_at,completed_at,winning_number").order("id",{ascending:false}).limit(30);
   if(error)throw error;
-  history=(data||[]).map(r=>({round_id:r.id,number:r.winning_number,time:r.completed_at?new Date(r.completed_at).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}):"",generated_at:r.completed_at||r.betting_started_at,pending:r.status!=="completed"||r.winning_number===null}));
+  history=(data||[]).map(r=>{const pending=r.status!=="completed"||r.winning_number===null;const displayTime=pending?(r.result_due_at||r.betting_started_at):r.completed_at;return{round_id:r.id,number:r.winning_number,time:displayTime?new Date(displayTime).toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit",hour12:true}):"",generated_at:displayTime,pending}});
   renderResults();
  }catch(e){
   list.innerHTML='<div class="results-empty">Results could not be loaded. Please try again.</div>';
