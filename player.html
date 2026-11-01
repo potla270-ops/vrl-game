@@ -328,6 +328,8 @@ function openTransferModal(pending=null){
    transferInProgress=false;$("transferBtn").disabled=false;
   }
  });
+ const historyButton=$("openTransferHistory");
+ if(historyButton)$("modalActions").after(historyButton);
 }
 $("transferBtn").onclick=()=>{
  if(!profile||transferInProgress)return;
