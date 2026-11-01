@@ -213,7 +213,7 @@ const SUPABASE_KEY="sb_publishable_loBuMyOma1KzaXtLNwyQNA_OfClFhUT";
 const API_URL=SUPABASE_URL+"/functions/v1/vrl-api";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false,storage:window.sessionStorage}});
 const $=id=>document.getElementById(id),chips=[2,5,10,20,50,100];
-let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],profile=null,deviceHash=null,busy=false;
+let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
 const fmt=n=>Math.floor(Number(n||0)).toLocaleString("en-IN"),fmtBalance=n=>Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}),sumBets=()=>Object.values(bets).reduce((a,b)=>a+b,0),uuid=()=>crypto.randomUUID();
 function showModal(title,body,button="OK",secondary=null,primaryAction=null){$("modalTitle").textContent=title;$("modalBody").innerHTML=typeof body==="string"?`<p>${body}</p>`:body;$("modalActions").innerHTML="";if(secondary){const b=document.createElement("button");b.textContent=secondary.label;b.onclick=()=>{hideModal();secondary.action?.()};$("modalActions").appendChild(b)}const p=document.createElement("button");p.className="primary";p.textContent=button;p.onclick=()=>{hideModal();primaryAction?.()};$("modalActions").appendChild(p);$("modalBackdrop").classList.add("show")}
 function hideModal(){$("modalBackdrop").classList.remove("show")}
@@ -290,7 +290,47 @@ try{await api("create_hierarchy_account",{vrl_id:vrlId,display_name:name,passwor
 catch(e){showModal("Could not create account",e.message||"Account creation failed.","OK")}
 });
 }
-$("transferBtn").onclick=()=>{if(!profile)return;showModal("Transfer virtual points",`<p>Available balance: <b>${fmt(balance)} points</b></p><label style="font-size:11px">Recipient 10-digit VRL ID</label><input id="transferRecipient" inputmode="numeric" maxlength="10" placeholder="VRL ID" style="width:100%;padding:10px;margin:6px 0 10px;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><label style="font-size:11px">Amount</label><input id="transferAmount" type="number" min="1" step="1" placeholder="Points" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><label style="font-size:11px">Note (optional)</label><input id="transferMemo" maxlength="120" placeholder="Note" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><button type="button" class="transfer-history-open" id="openTransferHistory">Transfer history · Last 3 days</button>`,"Send", {label:"Cancel",action:()=>{}},async()=>{const to=$("transferRecipient").value.trim(),amount=Number($("transferAmount").value),memo=$("transferMemo").value.trim();if(!/^\d{10}$/.test(to)||!Number.isSafeInteger(amount)||amount<=0){showModal("Check details","Enter a valid 10-digit recipient ID and whole number amount.","OK");return}try{await api("transfer_points",{recipient_vrl_id:to,amount,memo,idempotency_key:uuid()});showModal("Transfer complete","Points transferred successfully.","OK");await refresh()}catch(e){showModal("Transfer failed",e.message||"Transfer failed.","OK")}});const historyButton=$("openTransferHistory");if(historyButton) $("modalActions").after(historyButton);};
+const pendingTransferStorageKey=()=>profile?"vrl_pending_transfer:"+profile.id:null;
+function readPendingTransfer(){
+ if(!profile)return null;
+ try{const raw=sessionStorage.getItem(pendingTransferStorageKey());if(!raw)return null;const item=JSON.parse(raw);if(!item||!/^\\d{10}$/.test(String(item.recipient_vrl_id))||!Number.isSafeInteger(Number(item.amount))||Number(item.amount)<=0||typeof item.idempotency_key!=="string")return null;return item}catch(_){return null}
+}
+function openTransferModal(pending=null){
+ if(!profile||transferInProgress)return;
+ const locked=!!pending;
+ const body='<p>Available balance: <b>'+fmt(balance)+' points</b></p>'+
+ (locked?'<p style="color:#f2d58a">A previous transfer is awaiting confirmation. Retry the exact same request safely; do not change its details.</p>':'')+
+ '<label style="font-size:11px">Recipient 10-digit VRL ID</label><input id="transferRecipient" inputmode="numeric" maxlength="10" placeholder="VRL ID" '+(locked?'readonly':'')+' value="'+(locked?pending.recipient_vrl_id:'')+'" style="width:100%;padding:10px;margin:6px 0 10px;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px">'+
+ '<label style="font-size:11px">Amount</label><input id="transferAmount" type="number" min="1" step="1" placeholder="Points" '+(locked?'readonly':'')+' value="'+(locked?pending.amount:'')+'" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px">'+
+ '<label style="font-size:11px">Note (optional)</label><input id="transferMemo" maxlength="120" placeholder="Note" '+(locked?'readonly':'')+' value="'+(locked?String(pending.memo||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'):'')+'" style="width:100%;padding:10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px">'+
+ '<button type="button" class="transfer-history-open" id="openTransferHistory">Transfer history · Last 3 days</button>';
+ showModal("Transfer virtual points",body,locked?"Retry transfer":"Send",{label:"Cancel",action:()=>{}},async()=>{
+  if(transferInProgress)return;
+  let request=pending;
+  if(!request){
+   const to=$("transferRecipient").value.trim(),amount=Number($("transferAmount").value),memo=$("transferMemo").value.trim();
+   if(!/^\\d{10}$/.test(to)||!Number.isSafeInteger(amount)||amount<=0){showModal("Check details","Enter a valid 10-digit recipient ID and whole number amount.","OK");return}
+   request={recipient_vrl_id:to,amount,memo,idempotency_key:uuid()};
+   sessionStorage.setItem(pendingTransferStorageKey(),JSON.stringify(request));
+  }
+  transferInProgress=true;$("transferBtn").disabled=true;
+  try{
+   await api("transfer_points",request);
+   sessionStorage.removeItem(pendingTransferStorageKey());
+   showModal("Transfer complete","Points transferred successfully.","OK");
+   await refresh();
+  }catch(e){
+   const message=e.message||"Transfer could not be confirmed.";
+   showModal("Transfer not confirmed",message+" Your transfer details and request ID have been kept. Retry the same transfer to safely confirm its outcome; do not create a new transfer until this one is resolved.","Retry transfer",{label:"Close",action:()=>{}},()=>openTransferModal(readPendingTransfer()));
+  }finally{
+   transferInProgress=false;$("transferBtn").disabled=false;
+  }
+ });
+}
+$("transferBtn").onclick=()=>{
+ if(!profile||transferInProgress)return;
+ openTransferModal(readPendingTransfer());
+};
 
 function renderTickets(){
  const list=$("ticketList");
