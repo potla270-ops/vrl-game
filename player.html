@@ -243,7 +243,7 @@ function beginResultCycle(roundData){
  if(resultCycle&&String(resultCycle.roundId)===String(roundData.id))return;
  if(resultCycle&&!resultCycle.finished)return;
  const parsedStart=new Date(roundData.betting_ends_at).getTime();
- resultCycle={roundId:roundData.id,startedAt:Number.isFinite(parsedStart)?parsedStart:Date.now(),startAngle:wheelAngle,winner:null,decelerationAt:null,decelerationStartAngle:0,targetAngle:0,finished:false};
+ resultCycle={roundId:roundData.id,startedAt:Number.isFinite(parsedStart)?parsedStart:Date.now(),startAngle:wheelAngle,winner:null,decelerationAt:null,decelerationStartAngle:0,targetAngle:0,finished:false,pollInFlight:false,pollTimer:null};
  document.body.classList.add("result-phase");
  document.body.classList.remove("result-phase-ending");
  $("wheel").style.transition="none";
@@ -252,6 +252,25 @@ function beginResultCycle(roundData){
  $("wheelNumber").textContent="";
  if(resultAnimationFrame)cancelAnimationFrame(resultAnimationFrame);
  resultAnimationFrame=requestAnimationFrame(animateResultWheel);
+ pollResultCycleWinner();
+ resultCycle.pollTimer=setInterval(pollResultCycleWinner,500);
+}
+async function pollResultCycleWinner(){
+ const cycle=resultCycle;
+ if(!cycle||cycle.finished||cycle.winner!==null||cycle.pollInFlight)return;
+ cycle.pollInFlight=true;
+ try{
+  const {data,error}=await sb.from("rounds").select("status,winning_number").eq("id",cycle.roundId).maybeSingle();
+  if(error)throw error;
+  if(data&&data.status==="completed"&&data.winning_number!==null&&data.winning_number!==undefined){
+   cycle.winner=Number(data.winning_number);
+   if(cycle.pollTimer){clearInterval(cycle.pollTimer);cycle.pollTimer=null;}
+  }
+ }catch(error){
+  console.warn("Result reveal is waiting for round confirmation",error);
+ }finally{
+  cycle.pollInFlight=false;
+ }
 }
 function animateResultWheel(){
  const cycle=resultCycle;
@@ -281,6 +300,7 @@ function animateResultWheel(){
 function finishResultCycle(cycle){
  if(!cycle||cycle.finished)return;
  cycle.finished=true;
+ if(cycle.pollTimer){clearInterval(cycle.pollTimer);cycle.pollTimer=null;}
  wheelAngle=cycle.targetAngle;
  $("wheel").style.transform="rotate("+wheelAngle+"deg)";
  $("wheelNumber").textContent=String(cycle.winner);
