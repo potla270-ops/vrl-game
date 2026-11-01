@@ -215,7 +215,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 const $=id=>document.getElementById(id),chips=[2,5,10,20,50,100];
 let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
 const fmt=n=>Math.floor(Number(n||0)).toLocaleString("en-IN"),fmtBalance=n=>Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}),sumBets=()=>Object.values(bets).reduce((a,b)=>a+b,0),uuid=()=>crypto.randomUUID();
-function showModal(title,body,button="OK",secondary=null,primaryAction=null){$("modalTitle").textContent=title;$("modalBody").innerHTML=typeof body==="string"?`<p>${body}</p>`:body;$("modalActions").innerHTML="";if(secondary){const b=document.createElement("button");b.textContent=secondary.label;b.onclick=()=>{hideModal();secondary.action?.()};$("modalActions").appendChild(b)}const p=document.createElement("button");p.className="primary";p.textContent=button;p.onclick=()=>{hideModal();primaryAction?.()};$("modalActions").appendChild(p);$("modalBackdrop").classList.add("show")}
+function showModal(title,body,button="OK",secondary=null,primaryAction=null){const modal=$("modalBackdrop").querySelector(".modal");modal.querySelectorAll(".transfer-history-open,.menu-close-x").forEach(el=>el.remove());modal.classList.remove("menu-modal");$("modalActions").style.display="flex";$("modalTitle").textContent=title;$("modalBody").innerHTML=typeof body==="string"?`<p>${body}</p>`:body;$("modalActions").innerHTML="";if(secondary){const b=document.createElement("button");b.textContent=secondary.label;b.onclick=()=>{hideModal();secondary.action?.()};$("modalActions").appendChild(b)}const p=document.createElement("button");p.className="primary";p.textContent=button;p.onclick=()=>{hideModal();primaryAction?.()};$("modalActions").appendChild(p);$("modalBackdrop").classList.add("show")}
 function hideModal(){$("modalBackdrop").classList.remove("show")}
 function loginError(t){$("loginError").textContent=t;$("loginError").style.display="block"}
 async function makeDeviceHash(){const key="vrl_browser_identity_v1";let token=localStorage.getItem(key);if(!token){token=[...crypto.getRandomValues(new Uint8Array(32))].map(x=>x.toString(16).padStart(2,"0")).join("");localStorage.setItem(key,token)}const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));deviceHash=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");}
@@ -329,7 +329,7 @@ function openTransferModal(pending=null){
   }
  });
  const historyButton=$("openTransferHistory");
- if(historyButton)$("modalActions").after(historyButton);
+ if(historyButton){$("modalActions").after(historyButton);historyButton.onclick=()=>{hideModal();$("transferHistoryScreen").classList.add("show");$("transferHistorySearch").value="";loadTransferHistory()}}
 }
 $("transferBtn").onclick=()=>{
  if(!profile||transferInProgress)return;
@@ -432,7 +432,7 @@ function renderTransferHistory(){
   const status=document.createElement("div");status.className="history-status";status.textContent="SUCCESS";card.appendChild(status);list.appendChild(card);
  });
 }
-$("modalBody").addEventListener("click",e=>{if(e.target.id==="openTransferHistory"){hideModal();$("transferHistoryScreen").classList.add("show");$("transferHistorySearch").value="";loadTransferHistory()}});
+
 $("transferHistoryClose").onclick=()=>$("transferHistoryScreen").classList.remove("show");
 $("transferHistorySearch").addEventListener("input",renderTransferHistory);
 
