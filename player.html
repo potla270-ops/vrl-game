@@ -293,7 +293,7 @@ catch(e){showModal("Could not create account",e.message||"Account creation faile
 const pendingTransferStorageKey=()=>profile?"vrl_pending_transfer:"+profile.id:null;
 function readPendingTransfer(){
  if(!profile)return null;
- try{const raw=sessionStorage.getItem(pendingTransferStorageKey());if(!raw)return null;const item=JSON.parse(raw);if(!item||!/^\\d{10}$/.test(String(item.recipient_vrl_id))||!Number.isSafeInteger(Number(item.amount))||Number(item.amount)<=0||typeof item.idempotency_key!=="string")return null;return item}catch(_){return null}
+ try{const raw=sessionStorage.getItem(pendingTransferStorageKey());if(!raw)return null;const item=JSON.parse(raw);if(!item||!/^\d{10}$/.test(String(item.recipient_vrl_id))||!Number.isSafeInteger(Number(item.amount))||Number(item.amount)<=0||typeof item.idempotency_key!=="string")return null;return item}catch(_){return null}
 }
 function openTransferModal(pending=null){
  if(!profile||transferInProgress)return;
@@ -309,7 +309,7 @@ function openTransferModal(pending=null){
   let request=pending;
   if(!request){
    const to=$("transferRecipient").value.trim(),amount=Number($("transferAmount").value),memo=$("transferMemo").value.trim();
-   if(!/^\\d{10}$/.test(to)||!Number.isSafeInteger(amount)||amount<=0){showModal("Check details","Enter a valid 10-digit recipient ID and whole number amount.","OK");return}
+   if(!/^\d{10}$/.test(to)||!Number.isSafeInteger(amount)||amount<=0){showModal("Check details","Enter a valid 10-digit recipient ID and whole number amount.","OK");return}
    request={recipient_vrl_id:to,amount,memo,idempotency_key:uuid()};
    sessionStorage.setItem(pendingTransferStorageKey(),JSON.stringify(request));
   }
