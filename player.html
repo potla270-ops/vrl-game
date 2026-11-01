@@ -213,7 +213,7 @@ const SUPABASE_KEY="sb_publishable_loBuMyOma1KzaXtLNwyQNA_OfClFhUT";
 const API_URL=SUPABASE_URL+"/functions/v1/vrl-api";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false,storage:window.sessionStorage}});
 const $=id=>document.getElementById(id),chips=[2,5,10,20,50,100];
-let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
+let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],ticketHistory=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
 const fmt=n=>Math.floor(Number(n||0)).toLocaleString("en-IN"),fmtBalance=n=>Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}),sumBets=()=>Object.values(bets).reduce((a,b)=>a+b,0),uuid=()=>crypto.randomUUID();
 function showModal(title,body,button="OK",secondary=null,primaryAction=null){const modal=$("modalBackdrop").querySelector(".modal");modal.querySelectorAll(".transfer-history-open,.menu-close-x").forEach(el=>el.remove());modal.classList.remove("menu-modal");$("modalActions").style.display="flex";$("modalTitle").textContent=title;$("modalBody").innerHTML=typeof body==="string"?`<p>${body}</p>`:body;$("modalActions").innerHTML="";if(secondary){const b=document.createElement("button");b.textContent=secondary.label;b.onclick=()=>{hideModal();secondary.action?.()};$("modalActions").appendChild(b)}const p=document.createElement("button");p.className="primary";p.textContent=button;p.onclick=()=>{hideModal();primaryAction?.()};$("modalActions").appendChild(p);$("modalBackdrop").classList.add("show")}
 function hideModal(){$("modalBackdrop").classList.remove("show")}
@@ -235,6 +235,12 @@ sb.from("round_results").select("round_id,winning_number,generated_at").order("g
 history=(res.data||[]).map(x=>({number:x.winning_number,round_id:x.round_id,time:new Date(x.generated_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}));
 const myBets=await sb.from("bets").select("round_id,number,stake,created_at").eq("user_id",profile.id).order("created_at",{ascending:false}).limit(1000);
 tickets=(myBets.data||[]).reduce((a,b)=>{const key=String(b.round_id)+"|"+String(b.created_at);let t=a.find(x=>x.key===key);if(!t){t={key,round:b.round_id,created:b.created_at,bets:{},total:0,status:"Placed"};a.push(t)}t.bets[b.number]=(t.bets[b.number]||0)+b.stake;t.total+=b.stake;return a},[]);
+const ticketRoundIds=[...new Set(tickets.map(t=>Number(t.round)))].slice(0,3);
+if(ticketRoundIds.length){
+ const ticketRoundQuery=await sb.from("rounds").select("id,status,winning_number,completed_at").in("id",ticketRoundIds);
+ if(ticketRoundQuery.error)throw ticketRoundQuery.error;
+ ticketHistory=(ticketRoundQuery.data||[]).map(r=>({round_id:r.id,number:r.winning_number,generated_at:r.completed_at,pending:r.status!=="completed"||r.winning_number===null}));
+}else ticketHistory=[];
 if(round){$("roundLabel").textContent="Round #"+round.id}else $("roundLabel").textContent="Waiting for next round";
 $("wheelLabel").textContent=history.length?"Last winning number":"Waiting for result";if(history.length){$("wheelNumber").textContent=history[0].number;lastNumber=history[0].number}
 updateTimer();
@@ -343,7 +349,7 @@ function renderTickets(){
  if(!recent.length){list.innerHTML='<div class="history-empty">No tickets recorded yet.</div>';return}
  list.innerHTML="";
  recent.forEach(t=>{
-  const result=history.find(h=>String(h.round_id)===String(t.round));
+  const result=ticketHistory.find(h=>String(h.round_id)===String(t.round)&&!h.pending&&h.number!==null);
   const winningNumber=result?Number(result.number):null;
   const won=winningNumber&&t.bets[winningNumber]?Number(t.bets[winningNumber])*10:0;
   const date=new Date(t.created);
