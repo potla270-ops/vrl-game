@@ -316,13 +316,15 @@ function openTransferModal(pending=null){
   transferInProgress=true;$("transferBtn").disabled=true;
   try{
    await api("transfer_points",request);
-   sessionStorage.removeItem(pendingTransferStorageKey());
-   showModal("Transfer complete","Points transferred successfully.","OK");
-   await refresh();
   }catch(e){
    const message=e.message||"Transfer could not be confirmed.";
    showModal("Transfer not confirmed",message+" Your transfer details and request ID have been kept. Retry the same transfer to safely confirm its outcome; do not create a new transfer until this one is resolved.","Retry transfer",{label:"Close",action:()=>{}},()=>openTransferModal(readPendingTransfer()));
-  }finally{
+   return;
+  }
+  sessionStorage.removeItem(pendingTransferStorageKey());
+  showModal("Transfer complete","Points transferred successfully.","OK");
+  try{await refresh()}catch(_){}
+  finally{
    transferInProgress=false;$("transferBtn").disabled=false;
   }
  });
