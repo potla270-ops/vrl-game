@@ -299,7 +299,7 @@ function syncResultCycle(activeRound,resultRows){
  const winner=roundWinner??matching?.winning_number??null;
  if(winner!==null&&winner!==undefined)resultCycle.winner=Number(winner);
 }
-function updateTimer(){if(!round){seconds=0;phase="waiting";render();return}const target=new Date(round.status==="betting"?round.betting_ends_at:round.result_due_at).getTime();seconds=Math.max(0,Math.ceil((target-Date.now())/1000));phase=round.status==="betting"?"betting":round.status==="drawing"?"drawing":"waiting";render()}
+function updateTimer(){if(!round){seconds=0;phase="waiting";render();return}const now=Date.now(),bettingEnd=new Date(round.betting_ends_at).getTime(),resultDue=new Date(round.result_due_at).getTime(),betting=round.status==="betting"&&now<bettingEnd,drawing=round.status==="drawing"||(round.status==="betting"&&now>=bettingEnd),target=betting?bettingEnd:resultDue;seconds=Math.max(0,Math.ceil((target-now)/1000));phase=betting?"betting":drawing?"drawing":"waiting";if(drawing)beginResultCycle({...round,status:"drawing"});render()}
 async function refresh(){if(!profile||busy)return;busy=true;try{
 const [pr,wr,rr,res]=await Promise.all([
 sb.from("profiles").select("id,vrl_id,display_name,role,status,device_binding_hash,credential_version,credential_reset_at,credential_reset_message").eq("id",profile.id).single(),
