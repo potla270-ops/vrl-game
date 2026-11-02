@@ -566,6 +566,7 @@ async function restoreSession(){
   $("loginBackdrop").classList.add("show");
  }
 }
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&profile)signOut()});
 render();restoreSession();setInterval(()=>{if(round)updateTimer()},500);setInterval(()=>{if(profile)refresh()},3000);
 })();
 </script></body></html>
