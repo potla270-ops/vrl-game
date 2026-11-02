@@ -18,6 +18,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Create clean player URL
+        run: |
+          mkdir -p user
+          cp player.html user/index.html
       - name: Upload static website
         uses: actions/upload-pages-artifact@v3
         with:
