@@ -220,7 +220,7 @@ body.result-phase .wheel-label{visibility:hidden}
 const SUPABASE_URL="https://yjdkjidcjafshwsaiado.supabase.co";
 const SUPABASE_KEY="sb_publishable_loBuMyOma1KzaXtLNwyQNA_OfClFhUT";
 const API_URL=SUPABASE_URL+"/functions/v1/vrl-api";
-const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:true,detectSessionInUrl:false,storage:window.sessionStorage}});
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
 const $=id=>document.getElementById(id),chips=[2,5,10,20,50,100];
 let selectedChip=5,balance=0,bets={},round=null,phase="waiting",seconds=0,lastNumber=null,history=[],tickets=[],ticketHistory=[],profile=null,deviceHash=null,busy=false,transferInProgress=false;
 let resultCycle=null,wheelAngle=0,resultAnimationFrame=0;
@@ -547,6 +547,25 @@ $("transferHistoryClose").onclick=()=>$("transferHistoryScreen").classList.remov
 $("transferHistorySearch").addEventListener("input",renderTransferHistory);
 
 $("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))hideModal()});
-render();setInterval(()=>{if(round)updateTimer()},500);setInterval(()=>{if(profile)refresh()},3000);
+async function restoreSession(){
+ try{
+  const {data:{session},error}=await sb.auth.getSession();
+  if(error)throw error;
+  if(!session)return;
+  await makeDeviceHash();
+  await api("session_check",{client_context:"player"});
+  const restoredProfile=await api("get_my_profile");
+  if(restoredProfile.role==="admin"){await sb.auth.signOut();return}
+  profile={id:session.user.id,...restoredProfile};
+  $("loginBackdrop").classList.remove("show");
+  await refresh();
+  render();
+ }catch(e){
+  console.warn("Session restoration failed",e);
+  profile=null;
+  $("loginBackdrop").classList.add("show");
+ }
+}
+render();restoreSession();setInterval(()=>{if(round)updateTimer()},500);setInterval(()=>{if(profile)refresh()},3000);
 })();
 </script></body></html>
