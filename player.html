@@ -189,6 +189,16 @@ body.result-phase .pointer{z-index:1003}
 body.result-phase .wheel-center-label,body.result-phase .win-number{visibility:hidden}
 body.result-phase .wheel-label{visibility:hidden}
 /* Keep the center result upright while only the numbered wheel rotates. */\n.wheel-card{position:relative}\n.wheel-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none}\n
+
+/* VRL player access: touch devices only; portrait orientation required */
+@media (hover: hover) and (pointer: fine){
+  #app{display:none!important}
+  #desktopBlock{display:flex!important}
+}
+@media (orientation: landscape) and (max-height: 600px){
+  #app{display:none!important}
+  #desktopBlock{display:flex!important}
+}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
