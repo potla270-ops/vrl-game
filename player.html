@@ -202,6 +202,9 @@ body.result-phase .wheel-label{visibility:hidden}
 </style></head>
 <body>
 <div class="desktop-block" id="desktopBlock"><div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div></div>
+<script>
+(()=>{const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);const portrait=()=>window.innerHeight>=window.innerWidth;const allowed=mobile&&portrait();if(!allowed){document.getElementById("app")?.remove();const gate=document.getElementById("desktopBlock");if(gate){gate.style.display="flex";gate.style.minHeight="100dvh";gate.innerHTML='<div class="inner"><div class="logo">VRL</div><h1>VRL is made for mobile</h1><p>Please open this game on an Android or iOS phone or tablet in portrait mode.</p></div>';}}})();
+</script>
 <main class="app" id="app">
 <header class="topbar"><div class="brand"><div class="logo">VRL</div><div><div class="brand-name">VIRTUAL RUPEE LOTTERY</div><div class="brand-sub">PLAY • PREDICT • ENJOY</div></div></div><button class="menu" id="menuBtn" aria-label="Open menu">☰</button></header>
 <section class="wallet-row"><div><div class="eyebrow">Virtual points balance</div><div class="balance"><span id="balance">1,000</span> <span class="unit">PTS</span></div></div><button class="transfer" id="transferBtn">⇄ Transfer</button></section>
