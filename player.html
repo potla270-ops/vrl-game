@@ -390,7 +390,7 @@ const body=`<p>Choose a new password for this VRL account (at least 8 characters
 <label style="font-size:11px">New password</label><div class="password-wrap"><input id="newPassword1" type="password" minlength="8" autocomplete="new-password" style="width:100%;padding:10px 44px 10px 10px;margin:6px 0 10px;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><button type="button" id="toggleNewPassword1" class="password-toggle" aria-label="Show password" title="Show password" aria-pressed="false">👁</button></div>
 <label style="font-size:11px">Confirm new password</label><div class="password-wrap"><input id="newPassword2" type="password" minlength="8" autocomplete="new-password" style="width:100%;padding:10px 44px 10px 10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><button type="button" id="toggleNewPassword2" class="password-toggle" aria-label="Show password" title="Show password" aria-pressed="false">👁</button></div>`;
 showModal("Change password",body,"Save password",{label:"Cancel",action:()=>{}},async()=>{
-
+for(const id of ["newPassword1","newPassword2"]){const toggle=$("toggle"+id.charAt(0).toUpperCase()+id.slice(1));toggle.onclick=()=>{const input=$(id),show=input.type==="password";input.type=show?"text":"password";toggle.setAttribute("aria-label",show?"Hide password":"Show password");toggle.title=show?"Hide password":"Show password";toggle.setAttribute("aria-pressed",String(show))}}
 const a=$("newPassword1").value,b=$("newPassword2").value;
 if(a.length<8){showModal("Password too short","Use at least 8 characters.","OK");return}
 if(a!==b){showModal("Passwords do not match","Enter the same new password in both fields.","OK");return}
@@ -398,8 +398,7 @@ try{const {error}=await sb.auth.updateUser({password:a});if(error)throw error;sh
 catch(e){showModal("Could not change password",e.message||"Please try again.","OK")}
 });
 }
-for(const id of ["newPassword1","newPassword2"]){const toggle=$("toggle"+id.charAt(0).toUpperCase()+id.slice(1));toggle.onclick=()=>{const input=$(id),show=input.type==="password";input.type=show?"text":"password";toggle.setAttribute("aria-label",show?"Hide password":"Show password");toggle.title=show?"Hide password":"Show password";toggle.setAttribute("aria-pressed",String(show))}}
-function openAddUser()function openAddUser(){
+function openAddUser(){
 const childRole={admin:"Stockist",stockist:"Distributor",distributor:"Agent",agent:"Player"}[profile?.role];
 if(!childRole){showModal("Add user","Player accounts cannot create users.","Close");return}
 const body=`<p>Your account can create a new <b>${childRole}</b> account.</p>
@@ -407,15 +406,14 @@ const body=`<p>Your account can create a new <b>${childRole}</b> account.</p>
 <label style="font-size:11px">Choose 10-digit VRL ID</label><input id="newUserVrlId" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10-digit ID" style="width:100%;padding:10px;margin:6px 0 10px;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px">
 <label style="font-size:11px">Initial password (at least 8 characters)</label><div class="password-wrap"><input id="newUserPassword" type="password" minlength="8" autocomplete="new-password" style="width:100%;padding:10px 44px 10px 10px;margin:6px 0;background:#0b0e18;color:white;border:1px solid var(--line);border-radius:8px"><button type="button" id="toggleNewUserPassword" class="password-toggle" aria-label="Show password" title="Show password" aria-pressed="false">👁</button></div>`;
 showModal("Add "+childRole,body,"Create account",{label:"Cancel",action:()=>{}},async()=>{
-
+$("toggleNewUserPassword").onclick=()=>{const input=$("newUserPassword"),toggle=$("toggleNewUserPassword"),show=input.type==="password";input.type=show?"text":"password";toggle.setAttribute("aria-label",show?"Hide password":"Show password");toggle.title=show?"Hide password":"Show password";toggle.setAttribute("aria-pressed",String(show))};
 const name=$("newUserName").value.trim(),vrlId=$("newUserVrlId").value.trim(),password=$("newUserPassword").value;
 if(!name){showModal("Name required","Enter the new user's display name.","OK");return}
 if(!/^\d{10}$/.test(vrlId)){showModal("Invalid VRL ID","The VRL ID must contain exactly 10 digits.","OK");return}
 if(password.length<8){showModal("Password too short","Use at least 8 characters.","OK");return}
 try{await api("create_hierarchy_account",{vrl_id:vrlId,display_name:name,password});showModal("Account created",`${childRole} account ${vrlId} was created successfully. Share the ID and initial password securely with the new user.`,"OK");await refresh()}
 catch(e){showModal("Could not create account",e.message||"Account creation failed.","OK")}
-}
-$("toggleNewUserPassword").onclick=()=>{const input=$("newUserPassword"),toggle=$("toggleNewUserPassword"),show=input.type==="password";input.type=show?"text":"password";toggle.setAttribute("aria-label",show?"Hide password":"Show password");toggle.title=show?"Hide password":"Show password";toggle.setAttribute("aria-pressed",String(show))};);
+});
 }
 const pendingTransferStorageKey=()=>profile?"vrl_pending_transfer:"+profile.id:null;
 function readPendingTransfer(){
